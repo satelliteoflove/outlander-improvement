@@ -1,0 +1,5 @@
+# The original game and anything built from it are copyrighted: never commit ROM images.
+*.sfc
+*.smc
+build/
+__pycache__/
