@@ -1,8 +1,11 @@
-# Outlander: SA-1 Patch
+# Outlander: SA-1 Improvement Patch
 
 This patch adds the SA-1 chip to *Outlander* for the SNES, so the driving scenes run at 30
-frames a second instead of about 8. It also makes a few changes to how the game plays, mostly
-to make it less of a chore.
+frames a second instead of about 8. It also speeds up the walking and improves the hit detection
+in the on-foot scenes, which makes them somewhat less tedious and time consuming.
+
+For the most part the game is as it always was, just with much smoother driving and faster
+walking.
 
 ## What's changed
 
@@ -27,6 +30,11 @@ to make it less of a chore.
   than 60.
 
 ## What hasn't changed
+
+I didn't try to rebalance the game or do anything about its lack of variety, its scarce ammo and
+supplies, its poisoned food and water, or most of the other complaints people have had about it.
+It's still a hard game. The fewer roadblocks, lighter collisions and fairer hit detection do take
+a little of the edge off, but that's as far as it goes.
 
 The roads, art, music and story are all as they were. Apart from the changes above, each step of
 the driving plays out the same as in the original.
@@ -63,11 +71,11 @@ only applies to this exact file:
 | MD5 | `8ae0a302b1312691aee276b91e9714bf` |
 | SHA-1 | `4dd01cd2f950b70bd08a6b16115cd647c7147c04` |
 
-Apply `outlander-sa1.xdelta` with any xdelta3 patcher. On Windows, Delta Patcher works fine. From
+Apply `outlander-sa1-improvement.xdelta` with any xdelta3 patcher. On Windows, Delta Patcher works fine. From
 a command line:
 
 ```sh
-xdelta3 -d -s "Outlander (USA).sfc" outlander-sa1.xdelta "Outlander (SA-1).sfc"
+xdelta3 -d -s "Outlander (USA).sfc" outlander-sa1-improvement.xdelta "Outlander (SA-1 Improvement).sfc"
 ```
 
 The patched ROM should come out like this:
