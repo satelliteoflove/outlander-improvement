@@ -61,10 +61,11 @@ Chris wants `mesen2` used as the emulator for this work.
     python3 tools/video.py serve                       # a page with the video, on the LAN at port 8000
     python3 tools/vlook.py sheet sa1 3396 32 --mirror  # the captures as sheets of consecutive frames, to look at
     python3 tools/vlook.py steps                       # each step's frame against the original's, differences in red
+    python3 tools/coretest.py all                      # both ROMs in bsnes and Snes9x (libretro): pacing, scenes, build/coretest/*/sheet.png
     python3 tools/vfoot.py render --stage play_l12     # the same for an on-foot stage (default build): build/video/outlander-foot.mp4
     python3 tools/vreel.py                             # the two, with a title and an end card, to the first drive's music
 
-**Run `tools/test.py` after every change, and look at its output, not just its status.** It holds the build to the original's play, so it needs a `TWEAKS=0` build and refuses any other (the default build has the gameplay changes; `TWEAKS=0` must still give checksum `$483A` as long as nothing but `src/tweaks.asm` changes, which is a cheaper check than the suite). What it covers (details in its docstring):
+**Run `tools/test.py` after every change, and look at its output, not just its status.** It holds the build to the original's play, so it needs a `TWEAKS=0` build and refuses any other (the default build has the gameplay changes; `TWEAKS=0` must still give checksum `$416F` as long as nothing but `src/tweaks.asm` changes, which is a cheaper check than the suite). What it covers (details in its docstring):
 
 - *block* (`drive`, `demo`, `weave`): recordings of everything the driving block reads and writes on the original, replayed on the build and compared byte for byte (`golden_rec.lua`, `golden_chk.lua`). Also fails if the SA-1 touches memory it does not have (`sa1guard.lua`).
 - *timing* (`timing_drive`, `timing_demo`, `timing_map`, `timing_quit`): things no RAM comparison sees. Interrupt latency against the original's (`irqlat.lua`). Use by the S-CPU of RAM of which only the SA-1 has the current copy, writes that never reach the SA-1, and whether everything comes back when the scene ends, shows the map (Start while driving) or is left for the title screen (Start during the demo) (`stale.lua`). Video memory written after vblank has ended, which Mesen forgives and hardware does not (`vbudget.lua`). SA-1 access to memory it does not have (`sa1guard.lua`).
@@ -144,7 +145,7 @@ ROM image, 4 MB, built by `tools/build.py` (mapping `sa1rom 0,1,0,3`):
 | --- | --- | --- |
 | 0 | `$00-$1F`, `$80-$9F` | The original game plus hooks. The S-CPU runs this. |
 | 1 | `$20-$3F` | A second copy of the game, patched so the SA-1 can run it. Same addresses, so in-bank jumps need no fixing. |
-| 3 | `$A0-$BF` | New code, `src/`. (FXB defaults to block 3 at power-on, which is why the reset hook can jump there.) |
+| 3 | `$A0-$BF` | New code, `src/`. (FXB defaults to block 3 at power-on on hardware, but Snes9x maps `$80-$BF` like `$00-$3F` until FXB is written, so the reset hook first goes to `set_fxb`, in block 0's free space at `$02:CD00`.) |
 
 Memory:
 
@@ -246,7 +247,7 @@ Known and open:
 - The SA-1's copy sets its direct page with `LDX #$6100 / PHX / PLD` where the game has `#$0100`, and X keeps that value. Where the game goes on to use X as left there, the SA-1 would differ. `xcheck` over the autopilot drive (705 passes, all RAM identical) found one such X, at the exit to `$81:BC8B`, which reloads X before using it; `xcheck` reports these as notes.
 - The missile (FAQ: the SAM) is fired by tapping the accelerator three times: the NMI handler counts changes of Y in `$0179` (`$00:8B51`, reset after 12 vblanks without one), and the block's last lines (`$00:8EED-8F13`) fire when it is 6, missiles are left (`$0412`) and the last was 120 steps ago (`$0176`). The S-CPU reads `$0179` live at the end of its pass; the SA-1 reads the copy it was given at the start, so a missile can go a step earlier or later than on the original (the count holds for 12 vblanks, a step is 8, so a triple tap is never lost). Checked with `xcheck` on the level 16 drive with triple taps (the missile fires; all memory identical); `xcheck` notes the dead A this leaves at exit 0.
 - About 2,350 of the block's 14,600 instructions were never traced (rare object types and events). They are patched from static analysis only; `xcheck` with new input scripts is the way to exercise them, and `play.lua`'s autopilot is a way to get further into the game than a fixed script does.
-- Not tested: bsnes, Snes9x, real hardware. The later levels are covered from passwords (above), one drive each, by the autopilot, which does not stop at towns or use the map. Chris has listened to the sound and finds it fine.
+- Not tested: real hardware. bsnes-mercury (accuracy) and Snes9x 1.63, as libretro cores, are covered by `tools/coretest.py`: the demo, a drive and the level 12 stage on both ROMs, about 2 vblanks a shown frame and 8 a step. On a `TWEAKS=0` build the demo plays the original's 436 steps with the same health, and every step's picture matches the original's but for the background and a frame's difference in the car's and the driver's animation. The later levels are covered from passwords (above), one drive each, by the autopilot, which does not stop at towns or use the map. Chris has listened to the sound and finds it fine.
 
 ## SA-1 conversion: constraints that shape everything
 
