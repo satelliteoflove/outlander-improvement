@@ -27,7 +27,7 @@ ORIG = os.path.join(ROOT, 'Outlander.sfc')
 DRIVE, FOOT = os.path.join(V, 'outlander-sa1.mp4'), os.path.join(V, 'outlander-foot.mp4')
 SPC, MUSIC = os.path.join(V, 'drive1.spc'), os.path.join(V, 'drive1.wav')
 RATE = 32000
-INTRO_S, OUTRO_S, FADE = 7.0, 9.0, 0.6
+INTRO_S, OUTRO_S, FADE = 7.0, 14.0, 0.6
 
 INTRO = ('Outlander', 'SA-1 Improvement Patch for the SNES',
          ['Driving at 30 frames a second, up from about 8, at a steady pace',

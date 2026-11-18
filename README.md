@@ -13,9 +13,8 @@ walking.
 
 - The picture now runs at 30 frames a second. The busiest moments sometimes hold a frame a
   little longer.
-- The driving now runs at a steady pace. In the original, the speed rose and fell with how much
-  was on screen, so the first drive plays about 9% slower overall than it used to, though the
-  busiest stretches run a little faster.
+- The driving now runs at a steady pace, which makes the first drive about 9% slower on average
+  than it used to be. The next section explains why.
 - There are about 28% fewer roadblocks in the lanes.
 - Running into something standing, like a pole, a cactus or a roadblock, does about 30% less
   damage.
@@ -28,6 +27,30 @@ walking.
   right.
 - Two of the three enemy blows now have to come from closer on his left, under 40 pixels rather
   than 60.
+
+## Why the driving is a little slower on average
+
+In the original, the game moves forward one step each time it finishes drawing a frame, and the
+car covers the same ground per step however long that took. So the game's speed depended on the
+frame rate. A frame took anywhere from 6 to 11 vblanks to draw (a vblank is a 60th of a second),
+which is between 10 and about 5.5 frames a second. Quiet stretches of road ran faster, and busy
+ones slowed down.
+
+With the SA-1 drawing the frames, that link had to be cut, or the game would have run about four
+times too fast. The patch shows 30 frames a second and moves the game forward once every four of
+them, which is one step every 8 vblanks, all the time.
+
+| Time per step | Steps a second | Patched game compared to that |
+|---|---|---|
+| 6 vblanks (the original's quietest) | 10 | 25% slower |
+| 7.3 vblanks (the original's average on the first drive) | about 8.2 | about 9% slower |
+| 8 vblanks (the patch) | 7.5 | |
+| 11 vblanks (the original's busiest) | about 5.5 | about 38% faster |
+
+So the 9% is an average over the first drive, which is mostly quiet road. Busier driving comes out
+much closer: the attract demo, which is full of enemies and explosions, is only about 2% slower.
+Apart from the gameplay changes listed above, each step still does what it did before, and only
+the time between steps has changed.
 
 ## What hasn't changed
 
