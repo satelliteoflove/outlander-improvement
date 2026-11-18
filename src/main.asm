@@ -29,12 +29,20 @@ org $00FFD7 : db $0C            ; 4 MB
 org $00FFD8 : db $06            ; 64 KB BW-RAM
 
 ; ---------------------------------------------------------------- reset hook
-; The original reset code starts CLC / XCE / REP #$10 at $00:8000.  Bank $A0 shows block 3
-; from power-on (FXB defaults to 3), so we can jump straight to it.
+; The original reset code starts CLC / XCE / REP #$10 at $00:8000.  Hardware shows block 3 at
+; bank $A0 from power-on (FXB defaults to 3), but Snes9x maps $80-$BF like $00-$3F until FXB
+; is written, so FXB is set first, from the free space in block 0 (bank $02 is that block on
+; both).  The registers are as reset leaves them: emulation mode, data bank 0.
 org $008000
         assert read4($008000) == $10C2FB18
-        JML boot
+        JML set_fxb
 reset_continue = $008004
+org $02CD00
+        assert read4($02CD00) == $FFFFFFFF
+set_fxb:
+        LDA.b #$83
+        STA.l !SA1_FXB
+        JML boot
 
 ; ---------------------------------------------------------------- hooks in the game (block 0)
 if !OFFLOAD
