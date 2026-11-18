@@ -29,15 +29,16 @@ SPC, MUSIC = os.path.join(V, 'drive1.spc'), os.path.join(V, 'drive1.wav')
 RATE = 32000
 INTRO_S, OUTRO_S, FADE = 7.0, 9.0, 0.6
 
-INTRO = ('Outlander', 'SNES, 1993, with an SA-1 patch',
-         ['Driving at 30 frames a second, up from about 8, at the game\'s own speed',
+INTRO = ('Outlander', 'SA-1 Improvement Patch for the SNES',
+         ['Driving at 30 frames a second, up from about 8, at a steady pace',
           'On foot: faster walking and fairer hit tests'],
          'The original and the patched game side by side, in Mesen 2')
-OUTRO = ('Outlander, with the SA-1',
+OUTRO = ('Outlander: SA-1 Improvement Patch',
          ['A patch for the ROM of the US release.',
           'The SA-1 draws the driving scenes, four frames to every step of the game,',
-          'so the game plays as it always did, only smoother.',
-          'On foot he walks 1.5 times as fast, and his punch lands where his fist does.'],
+          'for much smoother driving at a steady pace.',
+          'On foot he walks 1.5 times as fast, and his punch lands where his fist does.',
+          'Fewer roadblocks and lighter collisions take a little of the edge off.'],
          ['With thanks to Vitor Vilela, whose SA-1 conversions showed the way.',
           'Music: the first driving stage, from the game.'])
 
