@@ -227,7 +227,7 @@ The driving scene shows 30 frames a second and plays at the original's speed: on
 | The S-CPU | busy but for one vblank a step, waiting for the flip (85 to 100%) | 9 to 15% busy: interrupt handlers and hand-overs (`tools/vcap.lua`) |
 | The SA-1 | | 65 to 99% busy. Per step: its two parts 0.88 + 0.67 / 0.90 + 0.80, three in-between frames of 0.84 + 0.49 / 0.86 + 0.62 each, copies and moving things on about 1.5 |
 
-So a step is fixed at 8 vblanks where the original's varied with the scenery: the drive's quiet stretches ran 6 or 7 on the original (the patch is up to a quarter slower there, 9% over the whole first drive), its busiest 9 to 11 (faster). Chris has not ruled on this; three frames a step would be 22% faster than the first drive's average, and steps of 3 and 4 frames in turn 4%.
+So a step is fixed at 8 vblanks where the original's varied with the scenery: the drive's quiet stretches ran 6 or 7 on the original (the patch is up to a quarter slower there, 9% over the whole first drive), its busiest 9 to 11 (faster). Chris decided to keep the steady 8, and the release notes must say so (the first drive about 9% slower overall, the demo about 2%); three frames a step would be 22% faster than the first drive's average, and steps of 3 and 4 frames in turn 4%.
 
 What decides whether a frame takes a third vblank:
 
