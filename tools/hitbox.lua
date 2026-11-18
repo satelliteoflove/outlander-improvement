@@ -16,8 +16,22 @@ local function r8(a) return emu.read(a, W) end
 local function r16(a) return r8(a) + r8(a + 1) * 256 end
 local GREEN, RED, Y = 0x0000FF00, 0x00FF3030, 122
 -- the numbers are read from the ROM, so the bars are right with and without src/tweaks.asm
-local function rom16(a) return emu.read(a, emu.memType.snesMemory) + emu.read(a + 1, emu.memType.snesMemory) * 256 end
-local R_STAND, R_ALT, R_CROUCH, LEFT = rom16(0x9092DA), rom16(0x9092EA), rom16(0x9092F4), rom16(0x9092BC)
+-- (from the file, by address: at start-up the SA-1 build's banks $80-$9F are not mapped yet;
+-- its new code, banks $A0-$BF, is the file's fourth megabyte)
+local function rom16(a)
+  local b = a >> 16
+  local o = (b >= 0xA0 and 0x300000 + (b - 0xA0) * 0x8000 or (b & 0x7F) * 0x8000) + (a & 0x7FFF)
+  return emu.read(o, emu.memType.snesPrgRom) + emu.read(o + 1, emu.memType.snesPrgRom) * 256
+end
+-- Facing left the reach starts LEFT behind his x and goes BACK further than in front.  With
+-- src/tweaks.asm, $90:92BB jumps to tw_left, whose SBC # and CMP # operands give both.
+local LEFT, BACK = rom16(0x9092BC), 0
+if rom16(0x9092BB) & 0xFF == 0x5C then
+  local t = rom16(0x9092BC) + (rom16(0x9092BE) & 0xFF) * 0x10000
+  BACK = 0x10000 - rom16(t + 10)
+  LEFT = rom16(t + 1) - BACK
+end
+local R_STAND, R_ALT, R_CROUCH = rom16(0x9092DA), rom16(0x9092EA), rom16(0x9092F4)
 local E_RIGHT, E_LEFT = rom16(0x908DD4), rom16(0x908D9A)   -- enemy to the player's right / left
 emu.addEventCallback(function()
   if r8(0x0000) == 0 then return end                 -- the driving scene
@@ -26,7 +40,7 @@ emu.addEventCallback(function()
   if r8(0xCB41) ~= 0 and r8(0xCB41) ~= 2 and r8(0x047C) == 0 then reach = R_ALT end
   if pf & 0x10 ~= 0 then reach = R_CROUCH end
   local a, b
-  if pf & 0x80 ~= 0 then a, b = 0x7C, 0x7C + reach - 1 else a, b = 0x7C - LEFT - reach + 1, 0x7C - LEFT end
+  if pf & 0x80 ~= 0 then a, b = 0x7C, 0x7C + reach - 1 else a, b = 0x7C - LEFT - reach - BACK + 1, 0x7C - LEFT end
   emu.drawRectangle(a, Y, b - a + 1, 3, GREEN, true, 1, 0)
   emu.drawLine(0x7C, Y - 22, 0x7C, Y + 38, GREEN, 1, 0)
   for i = 3, 12 do

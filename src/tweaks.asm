@@ -56,16 +56,25 @@ org $9098D4
         NOP #4
 ; ---------------------------------------------------------------- hit tests on foot
 ; They are distances between x positions (CLAUDE.md, "Gameplay changes"), and an enemy's
-; reached further than the player's on both sides.  In gaps between the two bodies the
-; player's blow reached 14 pixels to the right and 2 to 28 to the left, an enemy's 18 and
-; 38.  Now the player's reaches 26 either way and takes an enemy standing in him on the
-; left as it does on the right, and an enemy's reaches 18 either way.
-!TW_REACH = 10                  ; pixels added to the player's reach (26, 20 and 24 by stance)
+; reached further than the player's on both sides.  The player's blow: the nearest enemy
+; whose x is less than the reach (26, 20 and 24 by stance) ahead of his facing right, or
+; between 24 and 24 + the reach behind it facing left; one number for both sides.  Measured
+; on the sprites, his fist ends 36 pixels ahead of his x standing (33 crouching) and 30 behind
+; it (24), and an enemy's body starts about 7 past its x and ends about 26 past it.  So in
+; front a reach of more than about 30 hits an enemy the fist does not touch (the standing
+; blow is tested before the arm is out, but the fist gets there four frames later), while
+; behind, the fist reaches everything the test can.  In front the reach is now 4 longer; behind
+; 10 longer, and it starts 10 behind his x, not 24, so an enemy standing in him on the left
+; can be hit as one on the right can.  An enemy on his left hits from under 40, not 60.
+!TW_REACH = 4                   ; pixels added to the player's reach in front (26, 20 and 24 by stance)
+!TW_REACH_BACK = 10             ; and behind him
 !TW_LEFT  = $0A                 ; facing left the reach starts this far behind the player's x ($18)
 !TW_ENEMY = $28                 ; an enemy on the left hits from under this far ($3C)
+!TW_BACK = (!TW_REACH_BACK-!TW_REACH)
+assert !TW_BACK > 0, "tw_left assumes the reach behind is the longer"
 org $9092BB
-        assert read3($9092BB) == $0018E9                ; SBC #$0018
-        SBC.w #!TW_LEFT
+        assert read4($9092BB) == $380018E9              ; SBC #$0018 / SEC
+        JML tw_left                     ; (up to $9092C4: SEC / SBC $CB4D,Y / BMI $92CC)
 org $9092D9
         assert read3($9092D9) == $001AA2                ; LDX #$001A
         LDX.w #$001A+!TW_REACH
@@ -123,6 +132,22 @@ tw_coll:
         RTL
 
 ; (S-CPU, bank $90's on-foot code: direct page $0400, data bank $7E, 16-bit index)
+; The player's blow, facing left ($90:92BB, A = his x, carry set, 16 bits): the distance of
+; the enemy at Y behind the start of his reach, which the game compares with the one reach of
+; both sides.  It is taken !TW_BACK further back, and the first !TW_BACK pixels count as 0,
+; so behind him the reach is !TW_BACK longer than in front.  tools/hitbox.lua and
+; tools/footbot.lua read the two operands below (SBC #, CMP #) to know where it reaches.
+tw_left:
+        SBC.w #!TW_LEFT+!TW_BACK
+        SEC
+        SBC $CB4D,y
+        BPL .in
+        CMP.w #-!TW_BACK
+        BCC .out                        ; nearer than his reach behind starts: not this way
+        LDA.w #0
+.in     JML $9092C4                     ; CMP $4B: the nearest so far?
+.out    JML $9092CC
+
 tw_move:
         CPY #$0020
         BEQ .player
