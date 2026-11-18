@@ -45,7 +45,8 @@ right, so there can be a small correction.
 and I don't have anything that can run SA-1 games, so I can't say whether it works on real
 hardware.
 
-- Mesen 2 (2.1.1): played by hand, and the patch's automated tests compare it against the original game.
+- Mesen 2 (2.1.1): I played the first drive and the first on-foot stage, and the sound was fine.
+  The patch's automated tests also compare it against the original game here.
 - bsnes-mercury (accuracy core, libretro) and Snes9x 1.63 (libretro): scripted runs through the
   attract demo, a drive and an on-foot stage. Nobody has played it by hand in these two, and the
   sound wasn't checked there.
