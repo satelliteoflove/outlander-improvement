@@ -9,7 +9,9 @@ until the car leaves the road and the game goes on foot), foot (the level 12 pas
 right, kept alive, until the drive starts, then accelerate).  Reported from work RAM, once per
 frame: vblanks per shown frame ($DC changes at each flip), vblanks per game step ($2C changes
 once per step, on the patched ROM too), when each scene starts, and on foot how far the player
-walks.  Every 240th frame goes on <OUT>/sheet.png, to be looked at.
+walks.  Every 240th frame goes on <OUT>/sheet.png, to be looked at.  With STEP_FRAMES=1 in the
+environment, the picture shown by each game step is kept in <OUT>/steps.npy, so that a TWEAKS=0
+build's steps can be held against the original's (tools/coretest.py compare A B).
 """
 import collections, ctypes, json, os, subprocess, sys
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -23,6 +25,15 @@ PASSWORD = 'S7*C*JN*HPMFBG2'
 def hist(gaps):
     c = collections.Counter(gaps)
     return {'n': len(gaps), 'mean': round(sum(gaps) / len(gaps), 2) if gaps else None, 'hist': {str(k): c[k] for k in sorted(c)}}
+
+
+def compare(a, b):
+    """game step by game step: how many pixels of the view differ (the sky's layer scrolls differently)"""
+    import numpy as np
+    x, y = np.load(a + '/steps.npy', mmap_mode='r'), np.load(b + '/steps.npy', mmap_mode='r')
+    n = min(len(x), len(y)); d = np.array([int((np.asarray(x[i, 112:172]) != np.asarray(y[i, 112:172])).any(axis=2).sum()) for i in range(n)])
+    print('steps %d / %d; road area, pixels differing per step (of %d): median %d, 90%% %d, max %d at step %d; over 500: %d'
+          % (len(x), len(y), 60 * 256, np.median(d), np.percentile(d, 90), d.max(), d.argmax(), (d > 500).sum()))
 
 
 def run(core, rom, scen, out):
@@ -40,7 +51,7 @@ def run(core, rom, scen, out):
     w = (ctypes.c_ubyte * 0x20000).from_address(ptr)
     prev_dc = prev_2c = None; last_dc = last_2c = None
     flips, steps, scenes, sheet = [], [], [], []
-    scene = None; foot_x = {}; foot_at = None; drive_after = None
+    scene = None; foot_x = {}; foot_at = None; keep = os.environ.get('STEP_FRAMES'); kept = []; due = False
     for f in range(1, FRAMES[scen] + 1):
         m = 0
         for a, b, c in inp:
@@ -49,6 +60,7 @@ def run(core, rom, scen, out):
             if w[0] == 1: m = emu.parse_buttons('right')
             elif foot_at is not None: m = emu.parse_buttons('y')
         e.run(1, m)
+        if due: kept.append(e.frame[:224 * (e.frame.shape[0] // 224)][:: e.frame.shape[0] // 224][:224].copy()); due = False
         s, dc, c2 = w[0], w[0xDC], w[0x2C]
         if s != scene: scenes.append((f, s)); scene = s
         if scen == 'foot' and f > 2000 and s == 1:
@@ -62,13 +74,14 @@ def run(core, rom, scen, out):
                 last_dc = f
             if c2 != prev_2c:
                 if last_2c is not None and f - last_2c <= 40: steps.append(f - last_2c)
-                last_2c = f
+                last_2c = f; due = bool(keep)      # (the flip shows from the next frame on)
         prev_dc, prev_2c = dc, c2
         if f % 240 == 0 and f >= 960 and e.frame is not None: sheet.append(e.frame.copy())
     r = {'core': core, 'rom': os.path.basename(rom), 'scenario': scen, 'flips': hist(flips), 'steps': hist(steps),
          'scenes': scenes[:12], 'last_step_frame': last_2c, 'health': w[0x404] + w[0x405] * 256}
     if len(foot_x) == 2: r['walk_300'] = (foot_x[360] - foot_x[60]) & 0xFFFF
     json.dump(r, open(os.path.join(out, 'result.json'), 'w'))
+    if keep: np.save(os.path.join(out, 'steps.npy'), np.stack(kept))
     if sheet:
         h, wd = 224, 256; cols = 6; rows = (len(sheet) + cols - 1) // cols
         im = Image.new('RGB', (cols * wd, rows * h))
@@ -80,7 +93,9 @@ def run(core, rom, scen, out):
 
 if __name__ == '__main__':
     os.chdir(ROOT)
-    if sys.argv[1:] == ['all']:
+    if sys.argv[1:2] == ['compare']:
+        compare(*sys.argv[2:4])
+    elif sys.argv[1:] == ['all']:
         jobs = [(c, r, s) for c in CORES for r in ROMS for s in FRAMES]
         procs, n = [], max(1, (os.cpu_count() or 2) - 1)
         for c, r, s in jobs:
