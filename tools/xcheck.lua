@@ -31,7 +31,7 @@ local hook_bytes = {}
 for i = 0, 3 do hook_bytes[i + 1] = emu.read(HOOK + i, R) end
 local mode, s0, b_out, entry = "idle", nil, nil, nil
 local pass, checked, bad, bad_vals, by_addr = 0, 0, 0, 0, {}
-local dp_notes
+local dp_notes, a_notes
 local save = XC_SAVE and assert(io.open(XC_SAVE, "wb")) or nil
 local function grab(lo, hi, mt)
   local t, n = {}, 0
@@ -67,6 +67,14 @@ local function compare(a, b, vb)
       -- reloads X before using it.  Reported, not counted.
       if (r == "x" or r == "y") and a[r] == b[r] + 0x6000 and b[r] >= 0x100 and b[r] <= 0x700 and b[r] % 0x100 == 0 then
         dp_notes = (dp_notes or 0) + 1
+      -- The block's last read is LDA $0179 ($00:8EF7, when missiles are left and none was
+      -- fired lately): the count of changes of the accelerator, which the NMI handler keeps
+      -- ($00:8B51; three taps, six changes, fire a missile).  The S-CPU reads it live, after
+      -- the vblanks of its pass; the SA-1 the copy it was given at the start.  A's low byte is
+      -- then dead: exit 0 goes to the loop head, which loads it in 8-bit mode.  Reported, not
+      -- counted.  (Memory is compared as ever: the missile is fired by the same passes.)
+      elseif r == "a" and a.id == 0 and (a[r] & 0xFF00) == (b[r] & 0xFF00) then
+        a_notes = (a_notes or 0) + 1
       else
         note(r, string.format("%04X", a[r]), string.format("%04X", b[r]))
       end
@@ -83,7 +91,7 @@ local function compare(a, b, vb)
   end
   if n > 0 then
     bad = bad + 1; bad_vals = bad_vals + n
-    print(string.format("  MISMATCH pass %d (vblank %d): %d values, sa1/original: %s", pass, vb, n, table.concat(lines, ", ")))
+    print(string.format("  MISMATCH pass %d (vblank %d, exit %d): %d values, sa1/original: %s", pass, vb, b.id, n, table.concat(lines, ", ")))
   end
   return n
 end
@@ -107,7 +115,7 @@ local function exit_cb(id)
     end
   end
 end
-emu.addMemoryCallback(function()
+local function on_entry()
   -- one pass = one piece from one state: no early start of the next frame (src/pipe.asm)
   if SYM.pipe_dis_addr then emu.write(SYM.pipe_dis_addr, 1, B) end
   if mode ~= "idle" then return end
@@ -126,9 +134,12 @@ emu.addMemoryCallback(function()
   emu.write(SYM.own_addr, 0, B); emu.write(SYM.fb_sa1_addr, 0, B)
   for i = 0, 3 do emu.write(HOOK + i, ORIG[i + 1], R) end
   mode = "orig"
-end, emu.callbackType.exec, 0x008D12, 0x008D12, C, M)
-for id, a in ipairs({0x008F14, 0x008E41, 0x008D92}) do
+end
+emu.addMemoryCallback(on_entry, emu.callbackType.exec, 0x008D12, 0x008D12, C, M)
+emu.addMemoryCallback(on_entry, emu.callbackType.exec, 0x808D12, 0x808D12, C, M)
+for id, a in ipairs({0x008F14, 0x008E41, 0x008D92}) do      -- (either mirror: see tools/play.lua)
   emu.addMemoryCallback(exit_cb(id - 1), emu.callbackType.exec, a, a, C, M)
+  emu.addMemoryCallback(exit_cb(id - 1), emu.callbackType.exec, a | 0x800000, a | 0x800000, C, M)
 end
 SA1_GUARD_FAIL = function(msg) bad = bad + 1; print("  " .. msg) end
 local prev_end = on_end
@@ -149,6 +160,7 @@ function on_end()
     print("  addresses that differed: " .. table.concat(s, " "))
   end
   if dp_notes then print(string.format("  note: %d times an index register held a direct page value at the exit ($6x00 for $0x00)", dp_notes)) end
+  if a_notes then print(string.format("  note: %d times A's low byte differed at exit 0 (the accelerator's tap count, $0179, read at another moment)", a_notes)) end
   print(string.format("xcheck: %d passes checked, %d differ (%d values)", checked, bad, bad_vals))
   if bad > 0 or checked == 0 then EXIT_CODE = 1 end
 end

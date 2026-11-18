@@ -78,7 +78,9 @@ local function sample()
     cur_pad = pad[k] or {}
   end
 end
-emu.addMemoryCallback(sample, emu.callbackType.exec, 0x008C73, 0x008C73, C, M)
+-- (the loop runs in bank $00 when a game is started from the title screen, in $80 after an
+-- on-foot stage; the patched ROM's head_hook carries on in $00)
+for _, a in ipairs({0x008C73, 0x808C73}) do emu.addMemoryCallback(sample, emu.callbackType.exec, a, a, C, M) end
 if patched and SYM.te_commit then emu.addMemoryCallback(sample, emu.callbackType.exec, SYM.te_commit, SYM.te_commit, C, M) end
 function input_hook() return cur_pad end
 
@@ -88,7 +90,7 @@ local MASK = PLAY_MASK or {}
 MASK[0xDC] = true       -- which VRAM page the next frame goes to: the in-between frames take turns too
 -- what the pass has written of the frame buffer
 local fbw, fbn = {}, 0
-emu.addMemoryCallback(function() fbw = {}; fbn = 0 end, emu.callbackType.exec, 0x008CA3, 0x008CA3, C, M)
+for _, a in ipairs({0x008CA3, 0x808CA3}) do emu.addMemoryCallback(function() fbw = {}; fbn = 0 end, emu.callbackType.exec, a, a, C, M) end
 local function fb_wr(a)
   a = a & 0xFFFF
   if not fbw[a] then fbw[a] = true; fbn = fbn + 1 end
@@ -108,16 +110,21 @@ local function h_fb(h, mt)
   end
   return h
 end
+local n_exit = 0
 local function h_exit()
   local o = own()
   local h1, h2 = 0, 0
+  n_exit = n_exit + 1
+  local dump = (PLAY_DUMP_LOW == n_exit) and {} or nil      -- PLAY_DUMP_LOW = k: print the low RAM hashed at exit k
   for a = 0, 0x7FF do
     if not MASK[a] and (a < 0x200 or a >= 0x400) then
       local v
       if patched and LOW_OUT[a] then v = sa1_rd(a) else v = emu.read(a, W) end
       h1 = (h1 * 31 + v) % P
+      if dump then dump[#dump + 1] = string.format("%04X=%02X", a, v) end
     end
   end
+  if dump then print("LOWDUMP " .. table.concat(dump, " ")) end
   local mt = o and B or W
   for a = 0x2000, 0x30E4 do h2 = (h2 * 31 + emu.read(a, mt)) % P end
   h2 = h_fb(h2, mt)
@@ -195,7 +202,9 @@ if patched then
   emu.addMemoryCallback(function() exit_ev(emu.read(SYM.ex_id_addr, B)) end, emu.callbackType.exec, SYM.blk_back, SYM.blk_back, C, M)
 else
   for id, a in ipairs({0x008F14, 0x008E41, 0x008D92}) do
-    emu.addMemoryCallback(function() exit_ev(id - 1) end, emu.callbackType.exec, a, a, C, M)
+    for _, b in ipairs({0, 0x800000}) do
+      emu.addMemoryCallback(function() exit_ev(id - 1) end, emu.callbackType.exec, a | b, a | b, C, M)
+    end
   end
 end
 -- What was sent to VRAM, a piece at a time while the frame was being drawn, must be what the

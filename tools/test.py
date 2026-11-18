@@ -4,6 +4,8 @@
   tools/test.py record [name...]   # once (and after changing a scenario): run the ORIGINAL through them
   tools/test.py [name...]          # check build/outlander-sa1.sfc; exit status 1 on any difference
   tools/test.py -v60 demo          # list up to 60 differences per file
+  tools/test.py later              # the later levels, from passwords (play_l4 ... play_lend; about
+                                   # 5 minutes each, so not in the default run)
   tools/test.py xcheck 3000 ["input script"] [-DXC_SAVE="path"] [--pad=play_drive]
                                    # differential test over the patched game's own play: every
                                    # pass through the block is run both ways and compared
@@ -145,7 +147,7 @@ def xcheck(inp, frames, extra='', every=1, pad=None):
     scripts = ['tools/xcheck.lua', 'tools/sa1guard.lua']
     if pad:
         extra += 'PLAY_MODE = "pad"\nPLAY_PATH = "%s"\n' % os.path.abspath('build/golden/%s.txt' % pad)
-        inp = PLAY[pad][0]; scripts.insert(0, 'tools/play.lua')
+        inp = PLAY[pad][0]; scripts[:0] = ['tools/play.lua'] + list(PLAY[pad][5] if len(PLAY[pad]) > 5 else [])
     pre = prelude('GC_MASK = {%s}\nXC_EVERY = %d\n%s' % (','.join('[%d]=true' % a for a in mask), every, extra))
     return run(ROM, inp, frames, pre, *scripts)
 
@@ -182,29 +184,70 @@ def check_foot(n):
 
 
 # name: (input script, vblanks to record on the original, vblanks the build gets,
-#        autopilot settings or None, most game frames)
+#        autopilot settings or None, most game frames[, extra Lua files])
 PLAY = {
     'play_demo':  ('', 6400, 6600, None, 600),
     'play_drive': ('1000-1005:start', 9000, 9000, '{fire = 37, fire_len = 4}', 900),
 }
+# Later levels, from the game's own passwords (published ones; tools/password.py types
+# them in at the title screen).  A password puts the player down on foot by the road; he
+# walks right, kept alive by tools/foothold.lua, until the stage ends and the drive begins
+# (at the vblank given; the same on both ROMs).  Only holding right on foot: the on-foot
+# scenes drop frames in different places on the two ROMs (foot_nmi_on moves where in the
+# frame their loop runs), so a press timed by vblank could land on different passes.
+# name: (password, vblank the drive starts)
+PASSWORDS = {
+    'play_l4':   ('KN*B*C78*G9*B9K', 4976),
+    'play_l8':   ('BK*B*GDC*H8CBDM', 5736),
+    'play_l12':  ('S7*C*JN*HPMFBG2', 5925),
+    'play_l16':  ('B8*C*NMD**QFBC5', 5935),
+    'play_l20':  ('R**DBCCD*M6FBG5', 6025),
+    'play_lend': ('2M*F*JCLK66CBKP', 6220),       # "five towns from the final boss"
+}
+
+
+# The on-foot scenes' random generator ($90:F673, eight bytes at $046F).  The on-foot
+# loop counts the vblanks each pass waited, so where frames drop changes the play, and
+# the two ROMs drop them in different places (above): at level 16 the stage before the
+# drive ends with other values here.  Nothing in the driving scene uses them.
+FOOT_RNG = set(range(0x046F, 0x0477))
+
+
+def _password_scenarios():
+    import password
+    for n, (pw, drive) in PASSWORDS.items():
+        s, done = password.script(pw)
+        PLAY[n] = ('%s;%d-%d:right' % (s, done + 300, drive + 9000), drive + 7600, drive + 8400,
+                   '{fire = 37, fire_len = 4}', 900, ['tools/foothold.lua'])
+
+
+_password_scenarios()
 
 
 def play(n, mode):
-    inp, t_orig, t_new, auto, most = PLAY[n]
+    inp, t_orig, t_new, auto, most = PLAY[n][:5]
+    more = list(PLAY[n][5]) if len(PLAY[n]) > 5 else []
     irq = B.parse_ranges(open('build/irq_lowram.txt').read().splitlines()[1])
-    mask = sorted(irq | set(NOT_COMPARED))
+    mask = sorted(irq | set(NOT_COMPARED) | (FOOT_RNG if n in PASSWORDS else set()))
     extra = 'PLAY_MODE = "%s"\nPLAY_PATH = "%s"\nPLAY_MASK = {%s}\nPLAY_MAX = %d\n' % (
         mode, os.path.abspath('build/golden/%s.txt' % n), ','.join('[%d]=true' % a for a in mask), most)
+    extra += ''.join(a[2:] + '\n' for a in sys.argv[1:] if a.startswith('-D'))      # -DNAME=value: Lua options
     if mode == 'record':
         if auto: extra += 'PLAY_AUTO = %s\n' % auto
         f = tempfile.NamedTemporaryFile('w', suffix='.lua', delete=False); f.write(extra); f.close()
-        return run('Outlander.sfc', inp, t_orig, f.name, 'tools/play.lua')
+        return run('Outlander.sfc', inp, t_orig, f.name, 'tools/play.lua', *more)
     # (and the timing checks, as in check_timing: these runs are the longest stretches of play)
     # No limit on the NMI: the screens that follow the drive turn NMIs on in mid-vblank, on
     # the original as well (14,732 clocks late after play_drive's last frame).
     extra += ('LAT_MAX_IRQ = %d\nLAT_MAX_NMI = %d\nSTALE_FAIL = true\nVB_FAIL = true\nVB_MARGIN = 1.0\n'
               'SA1_GUARD_FAIL = function(msg) print(msg); EXIT_CODE = 1 end\n' % (LAT_LIMIT, 60000))
-    return run(ROM, inp, t_new, prelude(extra), 'tools/play.lua', 'tools/irqlat.lua', 'tools/stale.lua',
+    # an on-foot stage's set-up writes video memory on lines 1 to 5 (seen before the level 16
+    # drive, at the same vblank on the original)
+    # and a drive that begins after another (in the bank-$80 mirror) fades its palette in as
+    # leaving the map does (timing_map): 0.8 lines from the end of vblank on the original
+    extra += ('VB_ALLOW = {[0x90ACC0]=true, [0x90C739]=true, [0x90C757]=true, [0x808B94]=true, [0x808B9C]=true,'
+              ' [0x808BAA]=true, [0x808BB2]=true, [0x008B94]=true, [0x008B9C]=true, [0x008BAA]=true, [0x008BB2]=true}\n')
+    return run(ROM, inp, t_new, prelude(extra), 'tools/play.lua', *more, 'tools/irqlat.lua', 'tools/stale.lua',
                'tools/sa1guard.lua', 'tools/vbudget.lua')
 
 
@@ -221,7 +264,8 @@ def main():
     for a in sys.argv[1:]:
         if a.startswith('-v'): verbose = int(a[2:] or 60)
     if args and args[0] == 'record':
-        names = args[1:] or list(BLOCK) + list(FOOT) + list(PLAY)
+        names = args[1:] or list(BLOCK) + list(FOOT) + [n for n in PLAY if n not in PASSWORDS]
+        if names == ['later']: names = list(PASSWORDS)
         record([n for n in names if n not in PLAY])
         for n in names:
             if n in PLAY: play(n, 'record')
@@ -230,7 +274,8 @@ def main():
         pad = [a[6:] for a in sys.argv[1:] if a.startswith('--pad=')]
         sys.exit(xcheck(args[2] if len(args) > 2 else START, int(args[1]) if len(args) > 1 else 3000,
                         ''.join(a[2:] + '\n' for a in sys.argv[1:] if a.startswith('-D')), pad=pad[0] if pad else None))
-    names = args or list(BLOCK) + list(FOOT) + list(TIMING) + list(PLAY)
+    names = args or list(BLOCK) + list(FOOT) + list(TIMING) + [n for n in PLAY if n not in PASSWORDS]
+    if names == ['later']: names = list(PASSWORDS)      # the later levels: not in the default run
     for n in names:
         if n not in BLOCK and n not in FOOT and n not in TIMING and n not in PLAY: sys.exit('unknown scenario %s' % n)
     need([n for n in names if n in BLOCK or n in FOOT])

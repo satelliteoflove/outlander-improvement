@@ -5,23 +5,26 @@
 -- those times, and how close each vblank's last write comes to the end (line 262 = 0).
 -- VB_FAIL = true fails the run on a late write; VB_MARGIN = lines that must be left (default 0).
 -- VB_ALLOW = {[pc] = true}: late writes the original game makes too, which are reported but
--- do not fail the run.
+-- do not fail the run, and do not count towards how close a vblank's last write came.
 local C, M = emu.cpuType.snes, emu.memType.snesMemory
 local LINE = 1364
 local blank = true                    -- screen off ($2100 bit 7); the game starts that way
-local late, nlate, worst, worst_at, hist = {}, 0, 0, 0, {}
+local late, nlate, worst, worst_at, worst_by, hist = {}, 0, 0, 0, "", {}
 emu.addMemoryCallback(function(addr, value) blank = (value & 0x80) ~= 0 end, emu.callbackType.write, 0x002100, 0x002100, C, M)
 local function check(what, bytes)
   if blank then return end
   local s = emu.getState()
   local line, h = s["ppu.scanline"], s["memoryManager.hClock"] or 0
   local pos = (line >= 225 and (line - 225) or (line + 37)) * LINE + h + bytes * 8    -- clocks into vblank, at the end
+  local pc = (s["cpu.k"] << 16) | s["cpu.pc"]
   if line >= 225 and pos <= 37 * LINE then
-    if pos > worst then worst = pos; worst_at = FRAME end
+    if pos > worst and not (VB_ALLOW and VB_ALLOW[pc]) then      -- (the game's own, as late on the original)
+      worst = pos; worst_at = FRAME
+      worst_by = string.format("%s by %06X", what, pc)
+    end
     return
   end
   if line >= 225 then line = (line + (h + bytes * 8) // LINE) - 262 end      -- a transfer that runs past the end
-  local pc = (s["cpu.k"] << 16) | s["cpu.pc"]
   local k = string.format("%s by %06X", what, pc)
   if VB_ALLOW and VB_ALLOW[pc] then k = k .. " (as on the original)" else nlate = nlate + 1 end
   local r = late[k]
@@ -62,7 +65,7 @@ local prev = on_end
 function on_end()
   if prev then prev() end
   local left = (37 * LINE - worst) / LINE
-  print(string.format("video memory: the latest write in a vblank came %.1f lines before its end (vblank %d)", left, worst_at))
+  print(string.format("video memory: the latest write in a vblank came %.1f lines before its end (vblank %d, %s)", left, worst_at, worst_by))
   local t = {}
   for k, r in pairs(late) do t[#t + 1] = string.format("  %s  lines %d-%d  x%d  (first at vblank %d)", k, r.lo, r.hi, r.n, r.first) end
   table.sort(t)
