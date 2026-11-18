@@ -114,11 +114,12 @@ only applies to this exact file:
 | MD5 | `8ae0a302b1312691aee276b91e9714bf` |
 | SHA-1 | `4dd01cd2f950b70bd08a6b16115cd647c7147c04` |
 
-Apply `outlander-sa1-improvement.xdelta` with any xdelta3 patcher. On Windows, Delta Patcher works fine. From
-a command line:
+Apply `outlander-sa1-improvement.bps` with a patcher that handles BPS, like Floating IPS (Flips)
+or the web-based Rom Patcher JS. Lunar IPS won't do, since it only handles IPS. From a command
+line:
 
 ```sh
-xdelta3 -d -s "Outlander (USA).sfc" outlander-sa1-improvement.xdelta "Outlander (SA-1 Improvement).sfc"
+flips --apply outlander-sa1-improvement.bps "Outlander (USA).sfc" "Outlander (SA-1 Improvement).sfc"
 ```
 
 The patched ROM should come out like this:
@@ -139,5 +140,5 @@ played it, and pointed out what looked or felt wrong.
 
 ## Thanks
 
-Thanks to Vitor Vilela, whose SA-1 conversions of other SNES games showed how this kind of job
-can be done.
+Thanks to Vitor Vilela, whose SA-1 conversions of other SNES games
+([SA1-Root](https://github.com/VitorVilela7/SA1-Root)) showed how this kind of job can be done.

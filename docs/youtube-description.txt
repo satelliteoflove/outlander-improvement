@@ -24,7 +24,7 @@ HOW IT WAS MADE
 
 I made this patch with Claude, Anthropic's AI model, working in Claude Code. Claude did the reverse engineering and wrote the patch's code, its build and test tools, and the tools that made this video. I set the goals, decided which gameplay changes to make and how far to take them, played it, and pointed out what looked or felt wrong.
 
-Thanks to Vitor Vilela, whose SA-1 conversions of other SNES games showed how this kind of job can be done.
+Thanks to Vitor Vilela, whose SA-1 conversions of other SNES games (SA1-Root: https://github.com/VitorVilela7/SA1-Root) showed how this kind of job can be done.
 
 Music: the first driving stage, from the game.
 

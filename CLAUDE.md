@@ -96,7 +96,7 @@ Measuring: `prof.py` (time profile of the SA-1 inside the block, by routine and 
 
 ## The ROM
 
-`Outlander.sfc` is the unmodified original and is the only input. It is copyrighted, so it is git-ignored and must never be committed or uploaded anywhere. The hack is to be distributed as a patch against it (`xdelta3` is installed; `flips` is not).
+`Outlander.sfc` is the unmodified original and is the only input. It is copyrighted, so it is git-ignored and must never be committed or uploaded anywhere. The hack is distributed as a BPS patch against it (`tools/mkbps.py`), which can copy from the original: an IPS patch would have to spell out the SA-1's copy of the game, about 900 KB of it.
 
 Never modify `Outlander.sfc` in place. Build outputs go to `build/`.
 
