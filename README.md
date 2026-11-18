@@ -52,6 +52,26 @@ much closer: the attract demo, which is full of enemies and explosions, is only 
 Apart from the gameplay changes listed above, each step still does what it did before, and only
 the time between steps has changed.
 
+### Why 8
+
+The game shows a new frame at most every 2 vblanks, and there's only so much that can be sent to
+the SNES's video memory in each one. So at 30 frames a second, a step has to last a whole number
+of frames, which means 6, 8 or 10 vblanks.
+
+| Time per step | Frames per step | First drive | Attract demo |
+|---|---|---|---|
+| 6 vblanks | 3 | about 22% faster | about 33% faster |
+| **8 vblanks** | **4** | **about 9% slower** | **about 2% slower** |
+| 10 vblanks | 5 | about 27% slower | about 20% slower |
+
+8 is the closest of the three to how the original plays. At 6 the game would run much faster than
+it was ever meant to, which would make it harder, and at 10 it would drag.
+
+7 is possible only by alternating steps of 3 and 4 frames. It would land closer on the first drive,
+at about 4% faster, but the car's speed on screen would keep shifting from one step to the next,
+and busy scenes would run about 14% faster than they used to, with little processing time to spare.
+A steady 8 keeps the motion even and stays closer to the original in the busiest driving.
+
 ## What hasn't changed
 
 I didn't try to rebalance the game or do anything about its lack of variety, its scarce ammo and

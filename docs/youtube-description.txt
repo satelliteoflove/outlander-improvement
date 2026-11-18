@@ -10,6 +10,12 @@ With the SA-1 drawing the frames, that link had to be cut, or the game would hav
 
 The first drive averaged about 8.2 steps a second on the original, so it's about 9% slower overall. Its quietest moments are up to 25% slower, and the busiest moments in the game are faster than they were. The attract demo, which is full of enemies and explosions, is only about 2% slower.
 
+WHY ONE STEP EVERY 8
+
+At 30 frames a second, a new frame comes every 2 sixtieths of a second, so a step has to last 6, 8 or 10 of them to be a whole number of frames. 6 would make the first drive about 22% faster and busy scenes about 33% faster, which would make the game harder. 10 would make it drag, at about 27% slower on the first drive. 8 is the closest to how the original plays.
+
+7 is only possible by alternating steps of 3 and 4 frames. That would be closer on the first drive, but the car's speed on screen would keep shifting, and busy scenes would run about 14% faster than they used to.
+
 TESTING
 
 This has only been tested in emulators: Mesen 2, bsnes-mercury and Snes9x. It hasn't been tried on a real SNES or a flash cart.
