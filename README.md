@@ -8,8 +8,8 @@ For the most part the game is as it always was, just with much smoother driving 
 walking.
 
 The idea came from SNES drunk's video *Is Outlander [SNES] Worth Playing Today?*
-(https://www.youtube.com/watch?v=FHvH8xn5w-w), which lamented the game's poor framerate and
-repetitive play, and noted that there wasn't an SA-1 improvement patch for it.
+(https://www.youtube.com/watch?v=FHvH8xn5w-w), which lamented the game's poor framerate, sloppy
+hit detection and repetitive play, and noted that there wasn't an SA-1 improvement patch for it.
 
 There's a video of the original and the patched game side by side on YouTube:
 https://youtu.be/7QsA8cDBJ38
