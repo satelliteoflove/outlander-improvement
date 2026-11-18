@@ -28,4 +28,4 @@ Thanks to Vitor Vilela, whose SA-1 conversions of other SNES games (SA1-Root: ht
 
 Music: the first driving stage, from the game.
 
-Patch: [link to add once it's released]
+Patch and source: https://github.com/satelliteoflove/outlander-improvement/releases/tag/v1.0
