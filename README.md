@@ -7,6 +7,9 @@ in the on-foot scenes, which makes them somewhat less tedious and time consuming
 For the most part the game is as it always was, just with much smoother driving and faster
 walking.
 
+There's a video of the original and the patched game side by side on YouTube:
+https://youtu.be/7QsA8cDBJ38
+
 ## What's changed
 
 **Driving**
